@@ -121,3 +121,18 @@
 
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @utility animate-marquee { animation: marquee 30s linear infinite; }
+
+/* Transición suave para detalles de FAQ */
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+details[open] summary svg,
+details[open] summary span.arrow {
+  transform: rotate(90deg);
+}
+
+details summary svg,
+details summary span.arrow {
+  transition: transform 0.2s ease-in-out;
+}

@@ -1,239 +1,277 @@
 import React, { useState } from "react";
-import { Minus, Plus, Trash2, X, MessageCircle } from "lucide-react";
+import { useStore, formatARS } from "@/lib/store";
+import { X, Trash2, Plus, Minus, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
-import { buildWhatsAppMessage, formatARS, useStore, WHATSAPP } from "@/lib/store";
 
-const DELIVERY_OPTIONS = [
-  "Envío a domicilio",
-  "Punto de encuentro Zona Sur"
-];
-
-// Estaciones del Tren Roca para Puntos de Encuentro
-const ESTACIONES_ROCA = [
-  "Glew",
-  "Guernica",
-  "Alejandro Korn",
-  "Longchamps",
-  "Burzaco",
-  "Adrogué",
-  "Temperley",
-  "Lomas de Zamora",
-  "Banfield",
-  "Lanús",
-  "Plaza Constitución"
+const STATIONS = [
+  "Estación A. Korn",
+  "Estacion Guernica",
+  "Estación Glew",  
+  "Estación Longchamps",
+  "Estación Burzaco",
+  "Estación Adrogué",
+  "Estación Temperley",
+  "Estación Lomas de Zamora",
+  "Estación Banfield",
+  "Estación Remedios de Escalada",
+  "Estación Lanús",
+  "Estación Gerli",
+  "Estación Avellaneda",
+  "Estación Plaza Constitución",
 ];
 
 export function CartDrawer() {
-  const { cart, cartOpen, setCartOpen, updateQty, removeItem } = useStore();
-  const [name, setName] = useState("");
-  const [delivery, setDelivery] = useState<string>(DELIVERY_OPTIONS[0]);
+  const {
+    cart,
+    isCartOpen,
+    setCartOpen,
+    updateQuantity,
+    removeFromCart,
+    buildWhatsAppMessage,
+  } = useStore();
+
+  const [customerName, setCustomerName] = useState("");
+  const [deliveryMethod, setDeliveryMethod] = useState<"envio" | "punto">("envio");
   
-  // Campos dinámicos según tipo de entrega
-  const [puntoEncuentro, setPuntoEncuentro] = useState<string>(ESTACIONES_ROCA[0]);
-  const [direccion, setDireccion] = useState("");
-  const [localidad, setLocalidad] = useState("");
-  const [codigoPostal, setCodigoPostal] = useState("");
+  // Campos Envío a Domicilio
+  const [address, setAddress] = useState("");
+  const [locality, setLocality] = useState("");
+  const [zipCode, setZipCode] = useState("");
 
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  // Campo Punto de Encuentro
+  const [station, setStation] = useState(STATIONS[0]);
 
-  const checkout = () => {
-    if (!cart.length) {
+  const total = cart.reduce((acc, item) => {
+    const price = Number(item.product?.price || 0);
+    return acc + (isNaN(price) ? 0 : price) * item.quantity;
+  }, 0);
+
+  const handleSendWhatsApp = () => {
+    if (cart.length === 0) {
       toast.error("Tu carrito está vacío");
       return;
     }
-
-    if (!name.trim()) {
-      toast.error("Por favor completá tu Nombre y Apellido");
+    if (!customerName.trim()) {
+      toast.error("Por favor, ingresá tu Nombre y Apellido");
       return;
     }
 
-    // Validación según opción seleccionada
-    if (delivery === "Punto de encuentro Zona Sur") {
-      if (!puntoEncuentro) {
-        toast.error("Seleccioná una estación para el punto de encuentro");
-        return;
-      }
-    } else {
-      if (!direccion.trim() || !localidad.trim()) {
-        toast.error("Completá dirección y localidad para el envío a domicilio");
-        return;
-      }
+    if (deliveryMethod === "envio" && (!address.trim() || !locality.trim())) {
+      toast.error("Por favor, completá tu Dirección y Localidad para el envío");
+      return;
     }
 
-    // Construcción de detalles del envío
-    const detallesEnvio =
-      delivery === "Punto de encuentro Zona Sur"
-        ? `Punto de encuentro: Estación ${puntoEncuentro}`
-        : `Envío a domicilio: ${direccion}, ${localidad}${codigoPostal ? ` (CP ${codigoPostal})` : ""}`;
+    // Construcción del mensaje pasando los datos del formulario
+    let deliveryDetails = "";
+    if (deliveryMethod === "envio") {
+      deliveryDetails = `Envío a domicilio\n• Dirección: ${address}\n• Localidad: ${locality}${zipCode ? `\n• C.P.: ${zipCode}` : ""}`;
+    } else {
+      deliveryDetails = `Punto de encuentro (${station})`;
+    }
 
-    // Construir mensaje de WhatsApp pasando los datos correspondientes
-    const msg = buildWhatsAppMessage(cart, name.trim(), detallesEnvio, delivery);
-    window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, "_blank");
+    let message = `*NUEVO PEDIDO - PLATEA SUR*\n\n`;
+    message += `*Cliente:* ${customerName}\n`;
+    message += `*Método de Entrega:* ${deliveryDetails}\n\n`;
+    message += `*Detalle del pedido:*\n`;
+
+    cart.forEach((item) => {
+      const subtotal = item.product.price * item.quantity;
+      message += `• ${item.product.title} (Talle: ${item.size}) x${item.quantity} - $${subtotal.toLocaleString("es-AR")}\n`;
+    });
+
+    message += `\n*TOTAL: $${total.toLocaleString("es-AR")}*`;
+
+    const phone = "5491149709340";
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
   };
 
-  const field = "w-full rounded-lg border bg-secondary px-3 py-2.5 text-sm outline-none focus:border-primary transition-colors";
+  if (!isCartOpen) return null;
 
   return (
-    <div className={`fixed inset-0 z-50 ${cartOpen ? "" : "pointer-events-none"}`}>
-      {/* Fondo oscuro */}
-      <div
-        onClick={() => setCartOpen(false)}
-        className={`absolute inset-0 bg-background/70 backdrop-blur-sm transition-opacity ${
-          cartOpen ? "opacity-100" : "opacity-0"
-        }`}
-      />
-
-      <aside
-        className={`absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l bg-card transition-transform duration-300 ${
-          cartOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {/* Cabecera */}
-        <div className="flex items-center justify-between border-b p-4">
-          <h2 className="font-display text-3xl">Tu Pedido</h2>
-          <button
-            onClick={() => setCartOpen(false)}
-            aria-label="Cerrar"
-            className="rounded-full p-2 hover:bg-secondary"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Lista de camisetas */}
-        <div className="flex-1 space-y-3 overflow-y-auto p-4">
-          {cart.length === 0 && (
-            <p className="py-10 text-center text-muted-foreground">
-              Todavía no agregaste camisetas.
-            </p>
-          )}
-          {cart.map((i) => (
-            <div key={i.id} className="flex gap-3 rounded-xl border bg-secondary p-3">
-              <img
-                src={i.image}
-                alt={i.title}
-                className="h-20 w-16 rounded-md object-cover"
-              />
-              <div className="flex flex-1 flex-col">
-                <p className="text-sm font-semibold leading-tight">{i.title}</p>
-                <p className="text-xs text-muted-foreground">Talle {i.size}</p>
-                <div className="mt-auto flex items-center gap-2">
-                  <button
-                    onClick={() => updateQty(i.id, i.qty - 1)}
-                    className="rounded border p-1 hover:border-primary"
-                  >
-                    <Minus className="h-3 w-3" />
-                  </button>
-                  <span className="w-6 text-center text-xs font-bold">{i.qty}</span>
-                  <button
-                    onClick={() => updateQty(i.id, i.qty + 1)}
-                    className="rounded border p-1 hover:border-primary"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => removeItem(i.id)}
-                    aria-label="Quitar"
-                    className="ml-auto text-xs text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Formulario de checkout dinámico */}
-        <div className="space-y-3 border-t p-4">
-          {/* Nombre y Apellido obligatorio */}
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Nombre y Apellido"
-            className={field}
-          />
-
-          {/* Botones de Selección de Tipo de Entrega */}
-          <div className="grid grid-cols-2 gap-2">
-            {DELIVERY_OPTIONS.map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setDelivery(d)}
-                className={`rounded-lg border px-2 py-2 text-xs font-medium transition ${
-                  delivery === d
-                    ? "border-primary bg-accent text-foreground"
-                    : "text-muted-foreground hover:border-primary"
-                }`}
-              >
-                {d}
-              </button>
-            ))}
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/80 backdrop-blur-sm">
+      <div className="w-full max-w-md bg-card border-l border-border h-full flex flex-col justify-between p-6 overflow-y-auto shadow-2xl relative">
+        <div>
+          <div className="flex justify-between items-center mb-6 pb-3 border-b border-border">
+            <h2 className="font-display text-2xl uppercase font-black tracking-wider text-foreground">
+              Tu Pedido
+            </h2>
+            <button
+              onClick={() => setCartOpen(false)}
+              className="p-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
-          {/* Campos dinámicos según entrega */}
-          {delivery === "Punto de encuentro Zona Sur" ? (
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground font-medium pl-1">
-                Seleccioná la estación del Tren Roca:
-              </label>
-              <select
-                value={puntoEncuentro}
-                onChange={(e) => setPuntoEncuentro(e.target.value)}
-                className={field}
-              >
-                {ESTACIONES_ROCA.map((est) => (
-                  <option key={est} value={est}>
-                    Estación {est}
-                  </option>
-                ))}
-              </select>
+          {cart.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground font-semibold">
+              Tu carrito está vacío.
             </div>
           ) : (
+            <div className="space-y-3 max-h-[35vh] overflow-y-auto pr-1">
+              {cart.map((item) => {
+                const prod = item.product;
+                const priceNum = Number(prod.price || 0);
+
+                return (
+                  <div
+                    key={`${prod.id}-${item.size}`}
+                    className="flex items-center gap-3 bg-secondary/40 border border-border p-3 rounded-xl"
+                  >
+                    <div className="w-14 h-14 bg-secondary rounded-lg overflow-hidden border border-border/60 flex-shrink-0">
+                      {prod.image ? (
+                        <img
+                          src={prod.image}
+                          alt={prod.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">
+                          Sin foto
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-xs truncate">{prod.title}</h4>
+                      <p className="text-[11px] text-primary font-bold">
+                        Talle {item.size}
+                      </p>
+                      <p className="text-xs font-black text-foreground mt-0.5">
+                        ${priceNum.toLocaleString("es-AR")}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 bg-secondary px-2 py-1 rounded-lg border border-border">
+                      <button
+                        onClick={() => updateQuantity(prod.id, item.size, item.quantity - 1)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </button>
+                      <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(prod.id, item.size, item.quantity + 1)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => removeFromCart(prod.id, item.size)}
+                      className="text-muted-foreground hover:text-red-500 p-1 transition-colors"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="pt-4 border-t border-border space-y-3">
+          {/* Nombre y Apellido */}
+          <div>
+            <input
+              type="text"
+              placeholder="Nombre y Apellido"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-xs outline-none focus:border-primary font-bold"
+            />
+          </div>
+
+          {/* Selector de Método */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setDeliveryMethod("envio")}
+              className={`py-2 px-3 text-[11px] font-bold rounded-xl border transition-all ${
+                deliveryMethod === "envio"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-secondary/60 text-muted-foreground border-border"
+              }`}
+            >
+              Envío a domicilio
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeliveryMethod("punto")}
+              className={`py-2 px-3 text-[11px] font-bold rounded-xl border transition-all ${
+                deliveryMethod === "punto"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-secondary/60 text-muted-foreground border-border"
+              }`}
+            >
+              Punto de encuentro Zona Sur
+            </button>
+          </div>
+
+          {/* Campos condicionales según el método elegido */}
+          {deliveryMethod === "envio" ? (
             <div className="space-y-2">
               <input
                 type="text"
-                value={direccion}
-                onChange={(e) => setDireccion(e.target.value)}
                 placeholder="Dirección (Calle, Número, Piso/Depto)"
-                className={field}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-xs outline-none focus:border-primary font-bold"
               />
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
-                  value={localidad}
-                  onChange={(e) => setLocalidad(e.target.value)}
                   placeholder="Localidad / Barrio"
-                  className={field}
+                  value={locality}
+                  onChange={(e) => setLocality(e.target.value)}
+                  className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-xs outline-none focus:border-primary font-bold"
                 />
                 <input
                   type="text"
-                  value={codigoPostal}
-                  onChange={(e) => setCodigoPostal(e.target.value)}
                   placeholder="Código Postal (Opcional)"
-                  className={field}
+                  value={zipCode}
+                  onChange={(e) => setZipCode(e.target.value)}
+                  className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-xs outline-none focus:border-primary font-bold"
                 />
               </div>
             </div>
+          ) : (
+            <div>
+              <label className="text-[11px] text-muted-foreground font-semibold block mb-1">
+                Seleccioná la estación del Tren Roca:
+              </label>
+              <select
+                value={station}
+                onChange={(e) => setStation(e.target.value)}
+                className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-xs outline-none focus:border-primary font-bold cursor-pointer"
+              >
+                {STATIONS.map((st) => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
+              </select>
+            </div>
           )}
 
-          {/* Totales */}
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-sm text-muted-foreground">Total</span>
-            <span className="font-display text-3xl font-bold">{formatARS(total)}</span>
+          <div className="flex justify-between items-center pt-2">
+            <span className="text-xs text-muted-foreground font-bold">Total</span>
+            <span className="text-2xl font-black text-primary tracking-tight">
+              ${total.toLocaleString("es-AR")}
+            </span>
           </div>
 
-          {/* Botón enviar por WhatsApp */}
           <button
-            onClick={checkout}
-            className="btn-glow flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold"
+            onClick={handleSendWhatsApp}
+            className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
           >
-            <MessageCircle className="h-5 w-5" /> Enviar Pedido por WhatsApp
+            <MessageCircle className="h-4 w-4" /> Enviar Pedido por WhatsApp
           </button>
         </div>
-      </aside>
+      </div>
     </div>
   );
 }
+
+export default CartDrawer;

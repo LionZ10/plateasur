@@ -1,9 +1,8 @@
-import React, { useMemo, useState } from "react";
-import { ShoppingCart } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useStore } from "@/lib/store";
+import { ShoppingCart, Shirt } from "lucide-react";
 import { toast } from "sonner";
-import { formatARS, useStore, type Product } from "@/lib/store";
 
-// LISTA DE CATEGORÍAS ÚNICA Y SINCRONIZADA
 const CATEGORIES = [
   "Todas",
   "Liga Argentina",
@@ -14,128 +13,85 @@ const CATEGORIES = [
   "Selecciones",
 ];
 
-function ProductCard({ p }: { p: Product }) {
-  const { addToCart } = useStore();
-  const [size, setSize] = useState("");
+export function Catalog() {
+  const { products, isLoading, fetchProducts, search, category, setCategory, addToCart } = useStore();
+  const [selectedSizes, setSelectedSizes] = useState<{ [key: string]: string }>({});
+  const [sortBy, setSortBy] = useState("recomendados");
 
-  const add = () => {
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const filteredProducts = useMemo(() => {
+    let list = products.filter((p) => {
+      const matchesSearch = p.title.toLowerCase().includes(search.toLowerCase());
+      const matchesCategory = category === "Todas" || p.category === category;
+      return matchesSearch && matchesCategory;
+    });
+
+    if (sortBy === "nombre-asc") {
+      list = [...list].sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortBy === "precio-asc") {
+      list = [...list].sort((a, b) => a.price - b.price);
+    } else if (sortBy === "precio-desc") {
+      list = [...list].sort((a, b) => b.price - a.price);
+    }
+
+    return list;
+  }, [products, search, category, sortBy]);
+
+  const handleSizeSelect = (productId: string, size: string) => {
+    setSelectedSizes((prev) => ({ ...prev, [productId]: size }));
+  };
+
+  const handleAddToCart = (product: any) => {
+    const size = selectedSizes[product.id];
     if (!size) {
-      toast.error("Elegí un talle primero");
+      toast.error("Por favor, seleccioná un talle primero.");
       return;
     }
-    addToCart(p, size);
-    toast.success(`${p.title} agregada`, { description: `Talle ${size}` });
+    addToCart(product, size);
+    toast.success(`${product.title} agregada al carrito (Talle ${size})`);
   };
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border bg-card transition hover:border-primary/50">
-      <div className="relative aspect-[4/5] overflow-hidden bg-muted">
-        <img
-          src={p.image}
-          alt={p.title}
-          loading="lazy"
-          width={768}
-          height={960}
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-        />
-        <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-          {p.tags.map((t) => (
-            <span
-              key={t}
-              className={`rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wider ${
-                t === "MÁS VENDIDO"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background/80 text-foreground backdrop-blur"
-              }`}
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-1 flex-col gap-3 p-4">
+    <section className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+      {/* Encabezado del Catálogo y Ordenar por */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border/40 pb-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-primary">{p.category}</p>
-          <h3 className="mt-1 font-semibold leading-tight">{p.title}</h3>
-          <p className="mt-1 font-display text-2xl">{formatARS(p.price)}</p>
+          <span className="text-[10px] font-black tracking-[0.25em] text-primary uppercase block">
+            Catálogo
+          </span>
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl tracking-tight uppercase font-black">
+            Elegí Tu Camiseta
+          </h2>
         </div>
 
-        <select
-          value={size}
-          onChange={(e) => setSize(e.target.value)}
-          className="mt-auto w-full rounded-lg border bg-secondary px-3 py-2 text-sm outline-none focus:border-primary"
-        >
-          <option value="">Seleccionar Talle</option>
-          {p.sizes.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-
-        <button
-          onClick={add}
-          className="btn-glow flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-bold"
-        >
-          <ShoppingCart className="h-4 w-4" /> Agregar al Carrito
-        </button>
-      </div>
-    </article>
-  );
-}
-
-export function Catalog() {
-  const { products, category, setCategory, search } = useStore();
-  const [sort, setSort] = useState("default");
-
-  const list = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let r = products.filter(
-      (p) =>
-        (category === "Todas" || p.category === category) &&
-        (!q || p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
-    );
-    if (sort === "price-asc") r = [...r].sort((a, b) => a.price - b.price);
-    if (sort === "price-desc") r = [...r].sort((a, b) => b.price - a.price);
-    if (sort === "name") r = [...r].sort((a, b) => a.title.localeCompare(b.title));
-    return r;
-  }, [products, category, search, sort]);
-
-  return (
-    <section id="catalogo" className="mx-auto max-w-7xl scroll-mt-32 px-4 py-16">
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b pb-6">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-primary">CATÁLOGO</p>
-          <h2 className="font-display text-4xl font-bold">ELEGÍ TU CAMISETA</h2>
-        </div>
-
-        {/* ORDENAR POR PRECIO Y NOMBRE */}
-        <div className="flex items-center gap-3">
-          <label className="text-xs text-muted-foreground font-medium">Ordenar por:</label>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-semibold">Ordenar por:</span>
           <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="rounded-lg border bg-secondary px-3 py-1.5 text-xs outline-none focus:border-primary"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="bg-secondary/80 border border-border text-xs rounded-xl px-3 py-2 outline-none focus:border-primary font-bold cursor-pointer"
           >
-            <option value="default">Recomendados</option>
-            <option value="price-asc">Menor precio</option>
-            <option value="price-desc">Mayor precio</option>
-            <option value="name">Nombre (A-Z)</option>
+            <option value="recomendados">Recomendados</option>
+            <option value="nombre-asc">Nombre (A - Z)</option>
+            <option value="precio-asc">Menor precio</option>
+            <option value="precio-desc">Mayor precio</option>
           </select>
         </div>
       </div>
 
-      {/* BOTONES DE FILTRO DE CATEGORÍAS SINCRONIZADOS */}
-      <div className="mt-6 flex flex-wrap gap-2">
+      {/* Píldoras de Categorías */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
             onClick={() => setCategory(cat)}
-            className={`rounded-full px-4 py-2 text-xs font-medium transition-all ${
+            className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border ${
               category === cat
-                ? "bg-primary text-primary-foreground font-bold shadow-[0_0_12px_rgba(16,185,129,0.4)]"
-                : "bg-secondary border border-border text-muted-foreground hover:border-primary/50"
+                ? "bg-primary text-primary-foreground border-primary shadow-glow"
+                : "bg-secondary/60 text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
             }`}
           >
             {cat}
@@ -143,18 +99,111 @@ export function Catalog() {
         ))}
       </div>
 
-      {/* GRILLA DE PRODUCTOS */}
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {list.map((p) => (
-          <ProductCard key={p.id} p={p} />
-        ))}
-      </div>
+      {/* Grid de Productos (2 Columnas en Celular / 4 en Escritorio) */}
+      {isLoading ? (
+        <div className="text-center py-20 text-muted-foreground font-semibold">
+          Cargando camisetas...
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        /* Estado vacío limpio y estilizado para mantener la estructura */
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-card/40 border border-border/50 rounded-2xl text-center my-4 space-y-3">
+          <div className="p-3 bg-secondary/80 rounded-full text-primary">
+            <Shirt className="h-8 w-8" />
+          </div>
+          <h3 className="font-bold text-base">Próximamente más modelos</h3>
+          <p className="text-xs text-muted-foreground max-w-sm">
+            No hay productos cargados en <span className="text-primary font-bold">{category}</span> en este momento. Consultanos por WhatsApp si buscás un modelo específico.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 pt-2">
+          {filteredProducts.map((product) => {
+            const currentSize = selectedSizes[product.id] || "";
+            return (
+              <div
+                key={product.id}
+                className="group bg-card border border-border rounded-xl sm:rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm hover:border-primary/50 transition-all duration-300 relative"
+              >
+                <div>
+                  {/* Contenedor de Imagen con Efecto Hover y Badges */}
+                  <div className="relative aspect-square overflow-hidden bg-secondary/40">
+                    <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex flex-wrap gap-1">
+                      <span className="bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider backdrop-blur-md">
+                        Bajo Pedido
+                      </span>
+                    </div>
 
-      {list.length === 0 && (
-        <p className="py-20 text-center text-muted-foreground">
-          No encontramos camisetas en esta categoría o búsqueda.
-        </p>
+                    {/* Foto Frente */}
+                    <img
+                      src={product.image}
+                      alt={product.title}
+                      className={`w-full h-full object-cover transition-opacity duration-500 ease-in-out ${
+                        product.secondary_image ? "group-hover:opacity-0" : "group-hover:scale-105"
+                      }`}
+                    />
+
+                    {/* Foto Espalda */}
+                    {product.secondary_image && (
+                      <img
+                        src={product.secondary_image}
+                        alt={`${product.title} vista trasera`}
+                        className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out"
+                      />
+                    )}
+                  </div>
+
+                  <div className="p-2.5 sm:p-4 space-y-1.5 sm:space-y-2">
+                    <span className="text-[9px] sm:text-[11px] text-primary font-black uppercase tracking-wider">
+                      {product.category}
+                    </span>
+                    <h3 className="font-bold text-xs sm:text-base leading-tight truncate">
+                      {product.title}
+                    </h3>
+                    <p className="text-base sm:text-xl font-extrabold text-foreground">
+                      ${product.price.toLocaleString("es-AR")}
+                    </p>
+
+                    {/* Seleccionar Talle */}
+                    <div className="pt-1 sm:pt-2">
+                      <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-1 font-semibold">
+                        Talles:
+                      </p>
+                      <div className="flex gap-1 flex-wrap">
+                        {product.sizes?.map((sz: string) => (
+                          <button
+                            key={sz}
+                            onClick={() => handleSizeSelect(product.id, sz)}
+                            className={`px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold rounded-md sm:rounded-lg border transition-all ${
+                              currentSize === sz
+                                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                : "bg-secondary/80 text-foreground border-border hover:border-primary/50"
+                            }`}
+                          >
+                            {sz}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-2.5 sm:p-4 pt-0">
+                  <button
+                    onClick={() => handleAddToCart(product)}
+                    className="w-full bg-primary text-primary-foreground py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-extrabold text-[10px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+                  >
+                    <ShoppingCart className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Agregar al Carrito</span>
+                    <span className="sm:hidden">Agregar</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </section>
   );
 }
+
+export default Catalog;
