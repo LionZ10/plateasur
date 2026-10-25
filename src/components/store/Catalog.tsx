@@ -157,7 +157,7 @@ export function Catalog() {
       className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 [.mobile-active_&]:opacity-100 transition-opacity duration-500 ease-in-out"
     />
   )}
-</div>
+                  </div>
                   <div className="p-2.5 sm:p-4 space-y-1.5 sm:space-y-2">
                     <span className="text-[9px] sm:text-[11px] text-primary font-black uppercase tracking-wider">
                       {product.category}

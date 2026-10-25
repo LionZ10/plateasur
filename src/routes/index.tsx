@@ -217,6 +217,21 @@ function Index() {
           </div>
         </div>
       )}
+      {/* Barra Inferior de Créditos con más espacio abajo */}
+  <div className="max-w-7xl mx-auto pt-6 pb-10 border-t border-border/20 flex flex-col sm:flex-row items-center justify-between text-[11px] text-muted-foreground/60 gap-2">
+    <p>© {new Date().getFullYear()} Platea Sur. Todos los derechos reservados.</p>
+    <p className="flex items-center gap-1.5 flex-wrap justify-center">
+      <span>Desarrollado por</span>
+      <span className="font-bold text-primary">Nexo Studio</span>
+      <span>—</span>
+      <a
+        href="mailto:dev.nexostudio@gmail.com"
+        className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+      >
+        dev.nexostudio@gmail.com
+      </a>
+    </p>
+  </div>
 
       <CartDrawer />
       <Toaster theme="dark" position="bottom-left" richColors />
