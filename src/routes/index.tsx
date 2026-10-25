@@ -1,225 +1,380 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { Toaster } from "sonner";
-import { Package, Truck, MapPin, MessageCircle, Instagram, ShieldCheck, X, ChevronDown } from "lucide-react";
-import hero from "@/assets/hero.jpg";
-import { AnnouncementBar, Header, Logo } from "@/components/store/Header";
-import Catalog from "@/components/store/Catalog";
-import CartDrawer from "@/components/store/CartDrawer";
-import AdminPanel from "@/components/store/AdminPanel";
+import React, { useState } from 'react';
+import { useStore, Product } from '@/lib/store';
+import { supabase } from '@/lib/supabase';
+import { Upload, Trash2, Edit2, Loader2, X, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Platea Sur - Indumentaria Futbolera | Camisetas bajo pedido" },
-      { name: "description", content: "Camisetas de Liga Argentina, Ascenso, Retro, Selecciones y Niños bajo pedido. Envíos a todo el país y entregas en Zona Sur." },
-      { property: "og:title", content: "Platea Sur - Indumentaria Futbolera" },
-      { property: "og:description", content: "Camisetas de fútbol bajo pedido. Pedidos directos por WhatsApp." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: Index,
-});
-
-const INSTAGRAM = "https://instagram.com/plateasur";
-const WHATSAPP = "5491149709340";
-
-const FAQ = [
-  ["¿Cuánto tarda un pedido?", "Al ser bajo pedido, coordinamos los tiempos por WhatsApp según el modelo y talle."],
-  ["¿Cómo pago?", "Te pasamos los medios de pago al confirmar tu encargo por WhatsApp."],
-  ["¿Dónde entregan?", "Envíos a domicilio a todo el país y puntos de encuentro acordados en Zona Sur."],
+const CATEGORIES = [
+  'Liga Argentina',
+  'Ascenso Argentino',
+  'Retro / Clásicas',
+  'Niños',
+  'Shorts',
+  'Selecciones',
 ];
 
-function FaqItem({ question, answer }: { question: string; answer: string }) {
-  const [isOpen, setIsOpen] = useState(false);
+const TAGS = ['BAJO PEDIDO', 'MÁS VENDIDO', 'RETRO', 'ASCENSO'];
+const AVAILABLE_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
+
+export function AdminPanel() {
+  const { products, addProduct, deleteProduct, fetchProducts } = useStore();
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [title, setTitle] = useState('');
+  const [price, setPrice] = useState('');
+  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [selectedTags, setSelectedTags] = useState<string[]>(['BAJO PEDIDO']);
+  const [sizes, setSizes] = useState<string[]>(['S', 'M', 'L', 'XL', 'XXL']);
+
+  // Previews e Imágenes
+  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
+  const [mainImagePreview, setMainImagePreview] = useState<string>('');
+  
+  const [secImageFile, setSecImageFile] = useState<File | null>(null);
+  const [secImagePreview, setSecImagePreview] = useState<string>('');
+
+  const [uploading, setUploading] = useState(false);
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const toggleSize = (size: string) => {
+    setSizes((prev) =>
+      prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
+    );
+  };
+
+  const uploadFileToSupabase = async (file: File): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `products/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      toast.error(`Error en imagen: ${uploadError.message}`);
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
+
+  // Se activan los datos del producto seleccionado para edición
+  const handleEditInit = (product: Product) => {
+    setEditingId(product.id);
+    setTitle(product.title);
+    setPrice(product.price.toString());
+    setCategory(product.category || CATEGORIES[0]);
+    setSizes(product.sizes || ['S', 'M', 'L', 'XL', 'XXL']);
+    setMainImagePreview(product.image || '');
+    setSecImagePreview(product.secondary_image || '');
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle('');
+    setPrice('');
+    setCategory(CATEGORIES[0]);
+    setSelectedTags(['BAJO PEDIDO']);
+    setSizes(['S', 'M', 'L', 'XL', 'XXL']);
+    setMainImageFile(null);
+    setMainImagePreview('');
+    setSecImageFile(null);
+    setSecImagePreview('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!title || !price) {
+      toast.error('Completá título y precio');
+      return;
+    }
+
+    if (!editingId && !mainImageFile) {
+      toast.error('Cargá al menos la foto principal');
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      let finalMainImage = mainImagePreview;
+      let finalSecImage = secImagePreview;
+
+      if (mainImageFile) {
+        const url = await uploadFileToSupabase(mainImageFile);
+        if (url) finalMainImage = url;
+      }
+
+      if (secImageFile) {
+        const url = await uploadFileToSupabase(secImageFile);
+        if (url) finalSecImage = url;
+      }
+
+      const payload = {
+        title,
+        price: Number(price),
+        category,
+        sizes,
+        image: finalMainImage,
+        secondary_image: finalSecImage,
+      };
+
+      if (editingId) {
+        // Actualización explícita en Supabase
+        const { error } = await supabase
+          .from('products')
+          .update(payload)
+          .eq('id', editingId);
+
+        if (error) {
+          toast.error(`Error actualizando: ${error.message}`);
+        } else {
+          toast.success('Producto y categoría actualizados correctamente');
+          await fetchProducts();
+          resetForm();
+        }
+      } else {
+        const success = await addProduct(payload);
+        if (success) {
+          toast.success('Producto guardado en Supabase');
+          await fetchProducts();
+          resetForm();
+        }
+      }
+    } catch (err: any) {
+      toast.error('Error al procesar la solicitud');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
-    <div className="rounded-2xl border border-border bg-card/60 overflow-hidden transition-all duration-300 hover:border-primary/40">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full text-left p-4 sm:p-5 font-bold text-base flex items-center justify-between gap-4 outline-none select-none cursor-pointer"
-      >
-        <span>{question}</span>
-        <ChevronDown
-          className={`h-5 w-5 text-primary flex-shrink-0 transition-transform duration-300 ease-in-out ${
-            isOpen ? "rotate-180" : "rotate-0"
-          }`}
-        />
-      </button>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-foreground items-start">
+      {/* Formulario */}
+      <div className="bg-card border border-border p-4 rounded-xl space-y-4">
+        <div className="flex justify-between items-center border-b border-border/50 pb-2">
+          <h3 className="font-bold text-sm">
+            {editingId ? 'Editar producto' : 'Nuevo producto'}
+          </h3>
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+            >
+              <X className="h-3 w-3" /> Cancelar
+            </button>
+          )}
+        </div>
 
-      <div
-        className={`grid transition-all duration-300 ease-in-out ${
-          isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-        }`}
-      >
-        <div className="overflow-hidden">
-          <p className="px-4 pb-5 sm:px-5 pt-1 text-sm text-muted-foreground leading-relaxed border-t border-border/30">
-            {answer}
-          </p>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-[10px] text-muted-foreground font-semibold block mb-1">Nombre / Modelo</label>
+            <input
+              type="text"
+              placeholder="Ej: Boca Juniors Titular"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-secondary/80 border border-border rounded-lg px-3 py-2 text-xs outline-none focus:border-primary font-medium"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] text-muted-foreground font-semibold block mb-1">Categoría</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full bg-secondary/80 border border-border rounded-lg px-3 py-2 text-xs outline-none focus:border-primary font-semibold cursor-pointer"
+            >
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[10px] text-muted-foreground font-semibold block mb-1">Precio ($ ARS)</label>
+            <input
+              type="number"
+              placeholder="Ej: 35000"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="w-full bg-secondary/80 border border-border rounded-lg px-3 py-2 text-xs outline-none focus:border-primary font-medium"
+            />
+          </div>
+
+          {/* Carga de Fotos */}
+          <div className="grid grid-cols-2 gap-2">
+            <label className="border border-dashed border-border hover:border-primary/50 rounded-lg p-2 flex flex-col items-center justify-center cursor-pointer bg-secondary/30 min-h-[75px]">
+              {mainImagePreview ? (
+                <img src={mainImagePreview} alt="Frente" className="w-12 h-12 object-cover rounded" />
+              ) : (
+                <div className="text-center">
+                  <Upload className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
+                  <span className="text-[10px] text-muted-foreground">Foto Frente</span>
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    setMainImageFile(f);
+                    setMainImagePreview(URL.createObjectURL(f));
+                  }
+                }}
+              />
+            </label>
+
+            <label className="border border-dashed border-border hover:border-primary/50 rounded-lg p-2 flex flex-col items-center justify-center cursor-pointer bg-secondary/30 min-h-[75px]">
+              {secImagePreview ? (
+                <img src={secImagePreview} alt="Espalda" className="w-12 h-12 object-cover rounded" />
+              ) : (
+                <div className="text-center">
+                  <Upload className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
+                  <span className="text-[10px] text-muted-foreground">Foto Espalda</span>
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    setSecImageFile(f);
+                    setSecImagePreview(URL.createObjectURL(f));
+                  }
+                }}
+              />
+            </label>
+          </div>
+
+          {/* Badges */}
+          <div className="flex gap-1.5 flex-wrap pt-1">
+            {TAGS.map((tag) => (
+              <button
+                type="button"
+                key={tag}
+                onClick={() => toggleTag(tag)}
+                className={`px-2 py-1 text-[10px] font-extrabold rounded-md border uppercase transition-colors ${
+                  selectedTags.includes(tag)
+                    ? 'bg-primary/20 text-primary border-primary'
+                    : 'bg-secondary/60 text-muted-foreground border-border'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+
+          {/* Talles */}
+          <div className="flex gap-1 flex-wrap pt-1">
+            {AVAILABLE_SIZES.map((sz) => (
+              <button
+                type="button"
+                key={sz}
+                onClick={() => toggleSize(sz)}
+                className={`px-2.5 py-1 text-xs font-bold rounded-md border transition-colors ${
+                  sizes.includes(sz)
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-secondary/60 text-muted-foreground border-border'
+                }`}
+              >
+                {sz}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="submit"
+            disabled={uploading}
+            className="w-full bg-primary text-primary-foreground py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-50 mt-2"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Guardando...
+              </>
+            ) : editingId ? (
+              'Guardar Cambios'
+            ) : (
+              <>
+                <Plus className="h-4 w-4" /> Agregar producto
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+
+      {/* Lista de productos */}
+      <div className="bg-card border border-border p-4 rounded-xl space-y-3">
+        <h3 className="font-bold text-sm border-b border-border/50 pb-2">
+          Productos ({products.length})
+        </h3>
+
+        <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+          {products.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center justify-between bg-secondary/30 border border-border p-2 rounded-lg hover:border-border/80 transition-colors"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <img
+                  src={p.image}
+                  alt={p.title}
+                  className="w-9 h-9 rounded object-cover border border-border/50 flex-shrink-0"
+                />
+                <div className="min-w-0">
+                  <p className="font-bold text-xs truncate">{p.title}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {p.category} · ${p.price.toLocaleString('es-AR')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleEditInit(p)}
+                  className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-foreground transition-colors"
+                  title="Editar"
+                >
+                  <Edit2 className="h-3.5 w-3.5 text-primary" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (confirm(`¿Borrar ${p.title}?`)) {
+                      await deleteProduct(p.id);
+                      toast.success('Eliminado');
+                    }
+                  }}
+                  className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-red-500 transition-colors"
+                  title="Borrar"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function Index() {
-  const [guide, setGuide] = useState(false);
-  const [admin, setAdmin] = useState(false);
-  const [authenticated, setAuthenticated] = useState(false);
-  const [password, setPassword] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    const correctPassword = import.meta.env.VITE_STAFF_PASSWORD || "1234";
-    if (password === correctPassword) {
-      setAuthenticated(true);
-      setErrorMsg("");
-      setPassword("");
-    } else {
-      setErrorMsg("Contraseña incorrecta");
-    }
-  };
-
-  const handleCloseAdmin = () => {
-    setAdmin(false);
-    setPassword("");
-    setErrorMsg("");
-  };
-
-  return (
-    <> 
-      <AnnouncementBar />
-      <Header />
-      <main>
-        <section className="relative overflow-hidden">
-          <img src={hero} alt="" width={1600} height={912} className="absolute inset-0 h-full w-full object-cover opacity-50" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/20" />
-          <div className="pitch-lines absolute inset-0 opacity-40" />
-          <div className="relative mx-auto max-w-7xl px-4 py-24 md:py-36">
-            <p className="mb-4 inline-flex rounded-full border border-primary/40 bg-accent/60 px-3 py-1 text-xs uppercase tracking-[0.25em] text-primary">Cultura futbolera · Zona Sur</p>
-            <h1 className="max-w-3xl font-display text-6xl leading-[0.9] md:text-8xl">
-              Las Camisetas de Fútbol que Buscás, <span className="bg-gradient-primary bg-clip-text text-transparent">Bajo Pedido</span>
-            </h1>
-            <p className="mt-6 max-w-xl text-lg text-muted-foreground">Liga Argentina, Ascenso, Retro, Selecciones y Niños. Elegí tu talle y coordinamos tu encargo.</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <a href="#catalogo" className="btn-glow rounded-full px-7 py-3.5 font-bold">Ver Catálogo</a>
-              <a href="#envios" className="rounded-full border border-foreground/30 px-7 py-3.5 font-bold transition hover:border-primary hover:text-primary">Medios de Envío</a>
-            </div>
-          </div>
-        </section>
-
-        <section id="envios" className="mx-auto max-w-7xl scroll-mt-32 px-4">
-          <div className="relative -mt-8 grid gap-4 rounded-2xl border border-primary/40 bg-card p-6 shadow-glow md:grid-cols-[auto_1fr] md:p-8">
-            <Package className="h-10 w-10 text-primary" />
-            <div>
-              <h2 className="font-display text-3xl">Modelo Bajo Pedido & Envíos</h2>
-              <p className="mt-1 text-muted-foreground">📦 Todas nuestras prendas se manejan bajo pedido. Realizamos envíos a domicilio a todo el país y entregas en puntos de encuentro acordados en Zona Sur.</p>
-              <div className="mt-4 flex flex-wrap gap-4 text-sm">
-                <span className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /> Envío a domicilio</span>
-                <span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> Punto de encuentro Zona Sur</span>
-                <span className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-primary" /> Pedido por WhatsApp</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="catalogo" className="scroll-mt-20">
-          <Catalog />
-        </section>
-
-        {/* PREGUNTAS FRECUENTES (Con animación) */}
-        <section id="faq" className="mx-auto max-w-3xl px-4 py-16">
-  <h2 className="font-display text-4xl mb-6 uppercase tracking-tight font-black">
-    Preguntas Frecuentes
-  </h2>
-  <div className="space-y-3">
-    {FAQ.map(([q, a]) => (
-      <FaqItem key={q} question={q} answer={a} />
-    ))}
-  </div>
-</section>
-      </main>
-
-      {/* FOOTER (Reorganizado para que Acceso Staff no quede tapado) */}
-      <footer className="border-t border-border bg-card">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 md:grid-cols-3 items-center">
-          <div>
-            <Logo />
-            <p className="mt-3 text-sm text-muted-foreground">
-              Platea Sur - Indumentaria Futbolera. Camisetas bajo pedido para todo el país.
-            </p>
-          </div>
-
-          <div className="space-y-2 text-sm">
-            <a href={INSTAGRAM} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors">
-              <Instagram className="h-4 w-4 text-primary" /> @plateasur
-            </a>
-            <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors">
-              <MessageCircle className="h-4 w-4 text-primary" /> 11 4970-9340
-            </a>
-            <a href="#faq" className="block hover:text-primary transition-colors">
-              Preguntas Frecuentes
-            </a>
-          </div>
-
-          <div className="flex md:justify-start">
-           <button
-  onClick={() => setAdmin(true)}
-  className="text-[10px] text-zinc-700 hover:text-zinc-400 transition-colors select-none"
->
-  Acceso Staff
-</button>
-          </div>
-        </div>
-      </footer>
-
-      <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer" aria-label="WhatsApp" className="btn-glow fixed bottom-5 right-5 z-30 grid h-14 w-14 place-items-center rounded-full">
-        <MessageCircle className="h-6 w-6" />
-      </a>
-
-      {/* MODAL DE ACCESO STAFF / ADMIN PANEL */}
-      {admin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="relative w-full max-w-3xl bg-card border border-border rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6 pb-2 border-b border-border">
-              <div className="flex items-center gap-2 text-primary font-black uppercase tracking-wider text-base">
-                <ShieldCheck className="h-5 w-5" />
-                <span>ACCESO STAFF</span>
-              </div>
-              <button onClick={handleCloseAdmin} className="p-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {!authenticated ? (
-              <form onSubmit={handleLogin} className="space-y-4 max-w-sm mx-auto py-6">
-                <div>
-                  <input
-                    type="password"
-                    placeholder="Ingresá Clave..."
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary text-center font-bold tracking-widest"
-                    autoFocus
-                  />
-                  {errorMsg && <p className="text-red-500 text-xs text-center mt-2 font-semibold">{errorMsg}</p>}
-                </div>
-                <button type="submit" className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-extrabold hover:opacity-90 transition-opacity uppercase text-sm tracking-wider">
-                  Ingresar
-                </button>
-              </form>
-            ) : (
-              <AdminPanel />
-            )}
-          </div>
-        </div>
-      )}
-
-      <CartDrawer />
-      <Toaster theme="dark" position="bottom-left" richColors />
-    </>
-  );
-}
+export default AdminPanel;
