@@ -125,33 +125,39 @@ export function Catalog() {
                 className="group bg-card border border-border rounded-xl sm:rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm hover:border-primary/50 transition-all duration-300 relative"
               >
                 <div>
-                  {/* Contenedor de Imagen con Efecto Hover y Badges */}
-                  <div className="relative aspect-square overflow-hidden bg-secondary/40">
-                    <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex flex-wrap gap-1">
-                      <span className="bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider backdrop-blur-md">
-                        Bajo Pedido
-                      </span>
-                    </div>
+                  {/* Contenedor de Imagen con soporte Hover (PC) y Tap (Mobile) */}
+<div 
+  className="relative aspect-square overflow-hidden bg-secondary/40 cursor-pointer"
+  onTouchStart={(e) => {
+    // Alterna la visibilidad al tocar en mobile
+    const target = e.currentTarget;
+    target.classList.toggle("mobile-active");
+  }}
+>
+  <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex flex-wrap gap-1">
+    <span className="bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider backdrop-blur-md">
+      Bajo Pedido
+    </span>
+  </div>
 
-                    {/* Foto Frente */}
-                    <img
-                      src={product.image}
-                      alt={product.title}
-                      className={`w-full h-full object-cover transition-opacity duration-500 ease-in-out ${
-                        product.secondary_image ? "group-hover:opacity-0" : "group-hover:scale-105"
-                      }`}
-                    />
+  {/* Foto Frente */}
+  <img
+    src={product.image}
+    alt={product.title}
+    className={`w-full h-full object-cover transition-opacity duration-500 ease-in-out ${
+      product.secondary_image ? "group-hover:opacity-0 [.mobile-active_&]:opacity-0" : "group-hover:scale-105"
+    }`}
+  />
 
-                    {/* Foto Espalda */}
-                    {product.secondary_image && (
-                      <img
-                        src={product.secondary_image}
-                        alt={`${product.title} vista trasera`}
-                        className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-in-out"
-                      />
-                    )}
-                  </div>
-
+  {/* Foto Espalda */}
+  {product.secondary_image && (
+    <img
+      src={product.secondary_image}
+      alt={`${product.title} vista trasera`}
+      className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 [.mobile-active_&]:opacity-100 transition-opacity duration-500 ease-in-out"
+    />
+  )}
+</div>
                   <div className="p-2.5 sm:p-4 space-y-1.5 sm:space-y-2">
                     <span className="text-[9px] sm:text-[11px] text-primary font-black uppercase tracking-wider">
                       {product.category}
