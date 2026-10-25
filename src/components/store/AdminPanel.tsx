@@ -72,7 +72,7 @@ export function AdminPanel() {
     setEditingId(product.id);
     setTitle(product.title);
     setPrice(product.price.toString());
-    setCategory(product.category);
+    setCategory(product.category || CATEGORIES[0]); // Carga la categoría correcta al editar
     setSizes(product.sizes || []);
     setMainImagePreview(product.image);
     setSecImagePreview(product.secondary_image || '');
@@ -126,7 +126,7 @@ export function AdminPanel() {
           .update({
             title,
             price: Number(price),
-            category,
+            category, // Guarda la categoría elegida
             sizes,
             image: finalMainImage,
             secondary_image: finalSecImage,
@@ -152,7 +152,7 @@ export function AdminPanel() {
 
         if (success) {
           toast.success('Producto guardado en Supabase');
-          await fetchProducts(); // Refresca las listas inmediatamente
+          await fetchProducts();
           resetForm();
         }
       }
@@ -165,7 +165,7 @@ export function AdminPanel() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-foreground items-start">
-      {/* Columna Izquierda: Formulario (Nuevo / Editar) */}
+      {/* Columna Izquierda: Formulario */}
       <div className="bg-card border border-border p-4 rounded-xl space-y-4">
         <div className="flex justify-between items-center border-b border-border/50 pb-2">
           <h3 className="font-bold text-sm">
@@ -191,10 +191,11 @@ export function AdminPanel() {
             className="w-full bg-secondary/80 border border-border rounded-lg px-3 py-2 text-xs outline-none focus:border-primary"
           />
 
+          {/* Selección de Categoría */}
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full bg-secondary/80 border border-border rounded-lg px-3 py-2 text-xs outline-none focus:border-primary"
+            className="w-full bg-secondary/80 border border-border rounded-lg px-3 py-2 text-xs outline-none focus:border-primary font-semibold"
           >
             {CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
@@ -258,7 +259,7 @@ export function AdminPanel() {
             </label>
           </div>
 
-          {/* Etiquetas / Badges */}
+          {/* Badges / Etiquetas */}
           <div className="flex gap-1.5 flex-wrap pt-1">
             {TAGS.map((tag) => (
               <button

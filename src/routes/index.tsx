@@ -166,12 +166,12 @@ function Index() {
           </div>
 
           <div className="flex md:justify-start">
-            <button
-              onClick={() => setAdmin(true)}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors font-semibold underline underline-offset-4"
-            >
-              Acceso Staff
-            </button>
+           <button
+  onClick={() => setAdmin(true)}
+  className="text-[10px] text-zinc-700 hover:text-zinc-400 transition-colors select-none"
+>
+  Acceso Staff
+</button>
           </div>
         </div>
       </footer>
