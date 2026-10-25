@@ -7,6 +7,7 @@ const CATEGORIES = [
   "Todas",
   "Liga Argentina",
   "Ascenso Argentino",
+  "Internacional",
   "Retro / Clásicas",
   "Niños",
   "Shorts",

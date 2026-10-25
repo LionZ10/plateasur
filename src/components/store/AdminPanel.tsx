@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 const CATEGORIES = [
   'Liga Argentina',
   'Ascenso Argentino',
+  'Internacional',
   'Retro / Clásicas',
   'Niños',
   'Shorts',

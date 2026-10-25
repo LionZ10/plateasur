@@ -47,7 +47,7 @@ npm run dev
 ---
 
 © 2026 **Platea Sur** — Todos los derechos reservados.  
-Desarrollado por **Loomic Studio**.
+Desarrollado por **Nexo Studio**.
 ```
 
 ---
