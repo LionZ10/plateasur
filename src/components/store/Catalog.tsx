@@ -135,11 +135,22 @@ export function Catalog() {
     target.classList.toggle("mobile-active");
   }}
 >
-  <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex flex-wrap gap-1">
-    <span className="bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider backdrop-blur-md">
-      Bajo Pedido
+ <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex flex-wrap gap-1">
+  {product.tags && product.tags.map((tag: string) => (
+    <span
+      key={tag}
+      className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider backdrop-blur-md border ${
+        tag === 'BAJO PEDIDO'
+          ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/30'
+          : tag === 'MÁS VENDIDO'
+          ? 'bg-amber-950/80 text-amber-400 border-amber-500/30'
+          : 'bg-primary/80 text-primary-foreground border-primary/30'
+      }`}
+    >
+      {tag}
     </span>
-  </div>
+  ))}
+</div>
 
   {/* Foto Frente */}
   <img

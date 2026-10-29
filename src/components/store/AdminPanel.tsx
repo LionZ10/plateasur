@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore, Product } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import { Upload, Trash2, Edit2, Loader2, X, Plus } from 'lucide-react';
@@ -15,7 +15,8 @@ const CATEGORIES = [
 ];
 
 const TAGS = ['BAJO PEDIDO', 'MÁS VENDIDO', 'RETRO', 'ASCENSO'];
-const AVAILABLE_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
+const TALLES_ADULTOS = ['S', 'M', 'L', 'XL', 'XXL'];
+const TALLES_KIDS = ['8', '10', '12', '14', '16'];
 
 export function AdminPanel() {
   const { products, addProduct, deleteProduct, fetchProducts } = useStore();
@@ -24,7 +25,7 @@ export function AdminPanel() {
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0]);
-  const [selectedTags, setSelectedTags] = useState<string[]>(['BAJO PEDIDO']);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sizes, setSizes] = useState<string[]>(['S', 'M', 'L', 'XL', 'XXL']);
 
   // Previews e Imágenes
@@ -35,6 +36,26 @@ export function AdminPanel() {
   const [secImagePreview, setSecImagePreview] = useState<string>('');
 
   const [uploading, setUploading] = useState(false);
+
+ // En AdminPanel.tsx, actualizá el useEffect:
+useEffect(() => {
+  if (category === 'Niños') {
+    // Si la categoría es Niños, se filtran/fuerzan solo los talles de niños
+    setSizes((prev) => {
+      const kidsOnly = prev.filter((sz) => TALLES_KIDS.includes(sz));
+      return kidsOnly.length > 0 ? kidsOnly : ['8', '10', '12', '14', '16'];
+    });
+  } else {
+    // Para cualquier otra categoría, se filtran/fuerzan solo los de adultos
+    setSizes((prev) => {
+      const adultsOnly = prev.filter((sz) => TALLES_ADULTOS.includes(sz));
+      return adultsOnly.length > 0 ? adultsOnly : ['S', 'M', 'L', 'XL', 'XXL'];
+    });
+  }
+}, [category]);
+
+
+  const currentAvailableSizes = category === 'Niños' ? TALLES_KIDS : TALLES_ADULTOS;
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -75,6 +96,7 @@ export function AdminPanel() {
     setPrice(product.price.toString());
     setCategory(product.category || CATEGORIES[0]); // Carga la categoría correcta al editar
     setSizes(product.sizes || []);
+    setSelectedTags(product.tags || []);
     setMainImagePreview(product.image);
     setSecImagePreview(product.secondary_image || '');
   };
@@ -84,8 +106,8 @@ export function AdminPanel() {
     setTitle('');
     setPrice('');
     setCategory(CATEGORIES[0]);
-    setSelectedTags(['BAJO PEDIDO']);
-    setSizes(['S', 'M', 'L', 'XL', 'XXL']);
+   setSelectedTags([]);
+    setSizes([]);
     setMainImageFile(null);
     setMainImagePreview('');
     setSecImageFile(null);
@@ -129,6 +151,7 @@ export function AdminPanel() {
             price: Number(price),
             category, // Guarda la categoría elegida
             sizes,
+            tags: selectedTags,
             image: finalMainImage,
             secondary_image: finalSecImage,
           })
@@ -147,6 +170,7 @@ export function AdminPanel() {
           price: Number(price),
           category,
           sizes,
+          tags: selectedTags,
           image: finalMainImage,
           secondary_image: finalSecImage,
         });
@@ -280,19 +304,19 @@ export function AdminPanel() {
 
           {/* Talles */}
           <div className="flex gap-1 flex-wrap pt-1">
-            {AVAILABLE_SIZES.map((sz) => (
+            {currentAvailableSizes.map((size) => (
               <button
+                key={size}
                 type="button"
-                key={sz}
-                onClick={() => toggleSize(sz)}
-                className={`px-2.5 py-1 text-xs font-bold rounded-md border transition-colors ${
-                  sizes.includes(sz)
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-secondary/60 text-muted-foreground border-border'
+                onClick={() => toggleSize(size)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                  sizes.includes(size)
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary/40 text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {sz}
-              </button>
+                {size}
+                </button>
             ))}
           </div>
 

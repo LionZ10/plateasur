@@ -9,6 +9,7 @@ export interface Product {
   image: string;
   secondary_image?: string;
   sizes?: string[];
+  tags?: string[];
 }
 
 export interface CartItem {
