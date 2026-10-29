@@ -19,6 +19,9 @@ export function Catalog() {
   const [selectedSizes, setSelectedSizes] = useState<{ [key: string]: string }>({});
   const [sortBy, setSortBy] = useState("recomendados");
 
+ const [selectedProductZoom, setSelectedProductZoom] = useState<any | null>(null);
+ const [currentZoomView, setCurrentZoomView] = useState<'front' | 'back'>('front'); 
+
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
@@ -100,13 +103,12 @@ export function Catalog() {
         ))}
       </div>
 
-      {/* Grid de Productos (2 Columnas en Celular / 4 en Escritorio) */}
+      {/* Grid de Productos */}
       {isLoading ? (
         <div className="text-center py-20 text-muted-foreground font-semibold">
           Cargando camisetas...
         </div>
       ) : filteredProducts.length === 0 ? (
-        /* Estado vacío limpio y estilizado para mantener la estructura */
         <div className="flex flex-col items-center justify-center py-16 px-4 bg-card/40 border border-border/50 rounded-2xl text-center my-4 space-y-3">
           <div className="p-3 bg-secondary/80 rounded-full text-primary">
             <Shirt className="h-8 w-8" />
@@ -120,56 +122,63 @@ export function Catalog() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 pt-2">
           {filteredProducts.map((product) => {
             const currentSize = selectedSizes[product.id] || "";
+
             return (
               <div
                 key={product.id}
-                className="group bg-card border border-border rounded-xl sm:rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm hover:border-primary/50 transition-all duration-300 relative"
+                className="group bg-card border border-border rounded-xl sm:rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm hover:border-primary/50 transition-colors duration-300 relative"
               >
                 <div>
-                  {/* Contenedor de Imagen con soporte Hover (PC) y Tap (Mobile) */}
-<div 
-  className="relative aspect-square overflow-hidden bg-secondary/40 cursor-pointer"
-  onTouchStart={(e) => {
-    // Alterna la visibilidad al tocar en mobile
-    const target = e.currentTarget;
-    target.classList.toggle("mobile-active");
-  }}
->
- <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex flex-wrap gap-1">
-  {product.tags && product.tags.map((tag: string) => (
-    <span
-      key={tag}
-      className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider backdrop-blur-md border ${
-        tag === 'BAJO PEDIDO'
-          ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/30'
-          : tag === 'MÁS VENDIDO'
-          ? 'bg-amber-950/80 text-amber-400 border-amber-500/30'
-          : 'bg-primary/80 text-primary-foreground border-primary/30'
-      }`}
-    >
-      {tag}
-    </span>
-  ))}
-</div>
+                  
+                 {/* Contenedor de Imagen */}
+                    <div
+                      className="relative aspect-square overflow-hidden bg-secondary/40 cursor-pointer group"
+                      onClick={() => {
+                        setSelectedProductZoom(product);
+                        setCurrentZoomView("front");
+                      }}
+                    >
+                    {/* Badges / Tags */}
+                    <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex flex-wrap gap-1">
+                      {product.tags &&
+                        product.tags.map((tag: string) => (
+                          <span
+                            key={tag}
+                            className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider backdrop-blur-md border ${
+                              tag === "BAJO PEDIDO"
+                                ? "bg-emerald-950/80 text-emerald-400 border-emerald-500/30"
+                                : tag === "MÁS VENDIDO"
+                                ? "bg-amber-950/80 text-amber-400 border-amber-500/30"
+                                : "bg-primary/80 text-primary-foreground border-primary/30"
+                            }`}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                    </div>
 
-  {/* Foto Frente */}
-  <img
-    src={product.image}
-    alt={product.title}
-    className={`w-full h-full object-cover transition-opacity duration-500 ease-in-out ${
-      product.secondary_image ? "group-hover:opacity-0 [.mobile-active_&]:opacity-0" : "group-hover:scale-105"
-    }`}
-  />
+                    {/* Foto Frente */}
+                    <img
+                      src={product.image}
+                      alt={product.title}
+                      className={`w-full h-full object-cover transition-opacity duration-500 ease-in-out ${
+                        product.secondary_image
+                          ? "group-hover:opacity-0 [.mobile-active_&]:opacity-0"
+                          : "group-hover:scale-105"
+                      }`}
+                    />
 
-  {/* Foto Espalda */}
-  {product.secondary_image && (
-    <img
-      src={product.secondary_image}
-      alt={`${product.title} vista trasera`}
-      className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 [.mobile-active_&]:opacity-100 transition-opacity duration-500 ease-in-out"
-    />
-  )}
+                    {/* Foto Espalda */}
+                    {product.secondary_image && (
+                      <img
+                        src={product.secondary_image}
+                        alt={`${product.title} vista trasera`}
+                        className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 [.mobile-active_&]:opacity-100 transition-opacity duration-500 ease-in-out"
+                      />
+                    )}
                   </div>
+
+                  {/* Información del Producto */}
                   <div className="p-2.5 sm:p-4 space-y-1.5 sm:space-y-2">
                     <span className="text-[9px] sm:text-[11px] text-primary font-black uppercase tracking-wider">
                       {product.category}
@@ -187,24 +196,43 @@ export function Catalog() {
                         Talles:
                       </p>
                       <div className="flex gap-1 flex-wrap">
-                        {product.sizes?.map((sz: string) => (
-                          <button
-                            key={sz}
-                            onClick={() => handleSizeSelect(product.id, sz)}
-                            className={`px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold rounded-md sm:rounded-lg border transition-all ${
-                              currentSize === sz
-                                ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                                : "bg-secondary/80 text-foreground border-border hover:border-primary/50"
-                            }`}
-                          >
-                            {sz}
-                          </button>
-                        ))}
+                        {(() => {
+                          const TALLES_KIDS = ["8", "10", "12", "14", "16"];
+                          const TALLES_ADULTOS = ["S", "M", "L", "XL", "XXL"];
+
+                          const isKids = product.category?.toLowerCase() === "niños";
+                          const validSizes = isKids ? TALLES_KIDS : TALLES_ADULTOS;
+
+                          const rawSizes = (product.sizes || []).filter((sz: string) =>
+                            validSizes.includes(sz)
+                          );
+
+                          const sortedSizes = rawSizes.sort(
+                            (a: string, b: string) =>
+                              validSizes.indexOf(a) - validSizes.indexOf(b)
+                          );
+
+                          return sortedSizes.map((sz: string) => (
+                            <button
+                              key={sz}
+                              type="button"
+                              onClick={() => handleSizeSelect(product.id, sz)}
+                              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold rounded-md sm:rounded-lg border transition-all ${
+                                currentSize === sz
+                                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                  : "bg-secondary/80 text-foreground border-border hover:border-primary/50"
+                              }`}
+                            >
+                              {sz}
+                            </button>
+                          ));
+                        })()}
                       </div>
                     </div>
                   </div>
                 </div>
 
+                {/* Botón Agregar al Carrito */}
                 <div className="p-2.5 sm:p-4 pt-0">
                   <button
                     onClick={() => handleAddToCart(product)}
@@ -220,6 +248,92 @@ export function Catalog() {
           })}
         </div>
       )}
+     {/* Modal Lightbox con Loop Infinito, Flechas Fijas y Tap Mobile */}
+{selectedProductZoom && (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200"
+    onClick={() => setSelectedProductZoom(null)}
+  >
+    <div
+      className="relative max-w-2xl w-full bg-card border border-primary/30 rounded-3xl p-4 sm:p-6 shadow-[0_0_50px_rgba(16,185,129,0.15)] flex flex-col items-center gap-3"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Encabezado Modal */}
+      <div className="w-full flex items-center justify-between border-b border-border/60 pb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-black px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/40 uppercase tracking-widest">
+            PLATEA SUR
+          </span>
+          <h3 className="text-sm sm:text-base font-bold text-foreground truncate max-w-[180px] sm:max-w-xs">
+            {selectedProductZoom.title}
+          </h3>
+        </div>
+
+        {/* Indicador de Vista */}
+        <div className="flex items-center gap-3">
+          {selectedProductZoom.secondary_image && (
+            <span className="text-[11px] font-bold text-muted-foreground bg-secondary px-2.5 py-1 rounded-full border border-border">
+              {currentZoomView === "front" ? "Frente" : "Espalda"}
+            </span>
+          )}
+          <button
+            onClick={() => setSelectedProductZoom(null)}
+            className="p-1.5 rounded-full bg-secondary hover:bg-destructive/20 hover:text-destructive text-muted-foreground transition-colors"
+            aria-label="Cerrar visor"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      {/* Visor de Imagen con Tap Mobile y Loop Infinito */}
+      <div
+        className="relative w-full aspect-square max-h-[60vh] sm:max-h-[65vh] rounded-2xl overflow-hidden bg-secondary/30 flex items-center justify-center border border-border/50 cursor-pointer select-none"
+        onClick={() => {
+          if (selectedProductZoom.secondary_image) {
+            setCurrentZoomView((prev) => (prev === "front" ? "back" : "front"));
+          }
+        }}
+      >
+        <img
+          src={
+            currentZoomView === "back" && selectedProductZoom.secondary_image
+              ? selectedProductZoom.secondary_image
+              : selectedProductZoom.image
+          }
+          alt={selectedProductZoom.title}
+          className="w-full h-full object-contain p-2 transition-all duration-300"
+        />
+
+        {/* Flechas de Navegación en Loop (Fijas siempre) */}
+        {selectedProductZoom.secondary_image && (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentZoomView((prev) => (prev === "front" ? "back" : "front"));
+              }}
+              className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 text-white hover:bg-primary hover:text-black border border-white/20 transition-all active:scale-95 shadow-lg z-10"
+              aria-label="Foto anterior"
+            >
+              ❮
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentZoomView((prev) => (prev === "front" ? "back" : "front"));
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 text-white hover:bg-primary hover:text-black border border-white/20 transition-all active:scale-95 shadow-lg z-10"
+              aria-label="Foto siguiente"
+            >
+              ❯
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  </div>
+)}
     </section>
   );
 }

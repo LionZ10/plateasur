@@ -39,18 +39,11 @@ export function AdminPanel() {
 
  // En AdminPanel.tsx, actualizá el useEffect:
 useEffect(() => {
+  // Si cambia la categoría y no estamos editando la carga inicial
   if (category === 'Niños') {
-    // Si la categoría es Niños, se filtran/fuerzan solo los talles de niños
-    setSizes((prev) => {
-      const kidsOnly = prev.filter((sz) => TALLES_KIDS.includes(sz));
-      return kidsOnly.length > 0 ? kidsOnly : ['8', '10', '12', '14', '16'];
-    });
+    setSizes(['8', '10', '12', '14', '16']);
   } else {
-    // Para cualquier otra categoría, se filtran/fuerzan solo los de adultos
-    setSizes((prev) => {
-      const adultsOnly = prev.filter((sz) => TALLES_ADULTOS.includes(sz));
-      return adultsOnly.length > 0 ? adultsOnly : ['S', 'M', 'L', 'XL', 'XXL'];
-    });
+    setSizes(['S', 'M', 'L', 'XL', 'XXL']);
   }
 }, [category]);
 
