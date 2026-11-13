@@ -5,7 +5,7 @@ Sitio web oficial de **Platea Sur**, catálogo digital e e-commerce para indumen
 
 ---
 
-## ⚡ Características Principales
+## Características Principales
 
 * **Catálogo interactivo**: Filtros por categoría sincronizados (`Todas`, `Liga Argentina`, `Ascenso Argentino`, `Retro / Clásicas`, `Niños`, `Shorts`, `Selecciones`) y ordenamiento por precio/nombre.
 * **Carrito y Checkout a medida**:
@@ -19,16 +19,16 @@ Sitio web oficial de **Platea Sur**, catálogo digital e e-commerce para indumen
 
 ---
 
-## 🛠️ Tecnologías Utilizadas
+## Tecnologías Utilizadas
 
 * **Frontend**: React, TypeScript, Vite.
 * **Estilos & UI**: Tailwind CSS, Lucide Icons.
 * **Estado Global**: Zustand.
-* **Desarrollo & Branding**: Loomic Studio.
+* **Desarrollo & Branding**: Nexo Studio.
 
 ---
 
-## 🚀 Inicio Rápido
+## Inicio Rápido
 
 ### Requisitos previos
 * Node.js (v18 o superior)
