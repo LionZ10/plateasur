@@ -50,4 +50,3 @@ npm run dev
 Desarrollado por **Nexo Studio**.
 ```
 
----
