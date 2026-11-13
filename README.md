@@ -49,4 +49,3 @@ npm run dev
 © 2026 **Platea Sur** — Todos los derechos reservados.  
 Desarrollado por **Nexo Studio**.
 ```
-
